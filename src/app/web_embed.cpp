@@ -16,6 +16,7 @@
 #include "app/app.h"
 #include "app/app_menus.h"
 #include "app/commands/command.h"
+#include "app/commands/cmd_rotate.h"
 #include "app/commands/commands.h"
 #include "app/commands/params.h"
 #include "app/document.h"
@@ -61,9 +62,11 @@ const char* kSavePath = "/tmp/embed-save.aseprite";
 const char* kPngPath = "/tmp/embed-save.png";
 
 // Commands that leave the one sprite, open a file dialog or a URL, or change the canvas size that the lesson sets.
+// Rotate is denied only for the sprite (see isDenied()).
 const std::set<std::string> kDenied = {
-  "About", "CanvasSize", "CloseAllFiles", "CloseFile", "DeveloperConsole",
-  "DuplicateSprite", "DuplicateView", "Exit", "ExportSpriteSheet", "Home",
+  "About", "AutocropSprite", "CanvasSize", "CloseAllFiles", "CloseFile",
+  "CropSprite", "DeveloperConsole", "DuplicateSprite", "DuplicateView",
+  "Exit", "ExportSpriteSheet", "Home",
   "ImportSpriteSheet", "InstallScript", "KeyboardShortcuts", "Launch",
   "LoadMask", "LoadPalette", "NewFile", "NewSpriteFromSelection",
   "OpenFile", "OpenInFolder", "OpenScriptsFolder", "OpenWithApp", "Options",
@@ -97,9 +100,21 @@ public:
   void onClearRedo(DocumentUndo*) override { }
 } s_undoObserver;
 
+// Rotating the sprite, not the selection or the cel, swaps its width and height.
 bool isDenied(Command* command)
 {
+  if (auto rotate = dynamic_cast<RotateCommand*>(command))
+    return !rotate->flipMask();
   return command && kDenied.count(command->id()) > 0;
+}
+
+// A menu item's params are not loaded into its command until it runs.
+bool isDenied(AppMenuItem* item)
+{
+  Command* command = item->getCommand();
+  if (command && command->id() == CommandId::Rotate)
+    return item->getParams().get("target") != "mask";
+  return isDenied(command);
 }
 
 void onBeforeCommand(CommandExecutionEvent& ev)
@@ -128,7 +143,7 @@ bool prune(Menu* menu)
     auto item = dynamic_cast<AppMenuItem*>(child);
     if (!item)
       continue;
-    bool remove = (item == recentList || isDenied(item->getCommand()) ||
+    bool remove = (item == recentList || isDenied(item) ||
                    (item->getSubmenu() && !prune(item->getSubmenu())));
     if (remove)
       menu->removeChild(item);

@@ -8,7 +8,7 @@
 // We arm only for a parent in config.js, post only to it and accept messages only from its window.
 //
 // Editor -> page:
-//   art:ready {v: 1}                                  every 250 ms until the page sends anything, for 15 s at most
+//   art:ready {v: 1}                                  every 250 ms for 15 s, then every 2 s, until the page sends anything
 //   art:loaded {width, height}                        the sprite is open and autosave is armed
 //   art:load-error {reason}                           the art:load bytes did not open; never armed
 //   art:dirty                                         first change after the last autosave was sent
@@ -29,8 +29,10 @@
 
   const DEBOUNCE_MS = 2000;
   const MAX_WAIT_MS = 20000;
-  const READY_EVERY_MS = 250;
-  const READY_FOR_MS = 15000;
+  // The page can load after us (slow link), so art:ready never stops; it only slows down.
+  const READY_FAST_MS = 250;
+  const READY_FAST_FOR_MS = 15000;
+  const READY_SLOW_MS = 2000;
   // src/cfg/cfg.cpp reads the settings from self.storage under this name.
   const INI_PATH = '/home/web_user/.config/libresprite/libresprite.ini';
 
@@ -188,8 +190,7 @@
     if (heard || failed)
       return;
     post({ type: 'art:ready', v: 1 });
-    if (Date.now() - started < READY_FOR_MS)
-      setTimeout(announce, READY_EVERY_MS);
+    setTimeout(announce, Date.now() - started < READY_FAST_FOR_MS ? READY_FAST_MS : READY_SLOW_MS);
   };
   announce();
 
