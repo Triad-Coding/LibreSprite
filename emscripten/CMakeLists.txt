@@ -212,6 +212,7 @@ set(SRC_FILES
   ${SRC}/app/cmd/set_mask.cpp
   ${SRC}/app/cmd/set_mask_position.cpp
   ${SRC}/app/cmd/set_palette.cpp
+  ${SRC}/app/cmd/set_pixel.cpp
   ${SRC}/app/cmd/set_pixel_format.cpp
   ${SRC}/app/cmd/set_sprite_size.cpp
   ${SRC}/app/cmd/set_total_frames.cpp
