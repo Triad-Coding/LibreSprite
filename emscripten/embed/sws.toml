@@ -1,0 +1,34 @@
+# Static Web Server config.
+# entrypoint.sh fills in __PORT__ and __FRAME_ANCESTORS__ when the container starts.
+
+[general]
+host = "::"
+port = __PORT__
+root = "/public"
+log-level = "info"
+directory-listing = false
+compression = true
+# Serves the .br and .gz copies that stage.sh makes
+compression-static = true
+# Cache-Control comes from the rules below
+cache-control-headers = false
+
+[advanced]
+
+# Every response: the editor needs cross-origin isolation (threads), and only the lesson pages can frame it.
+# Pages and config.js are revalidated.
+[[advanced.headers]]
+source = "**"
+[advanced.headers.headers]
+Cross-Origin-Opener-Policy = "same-origin"
+Cross-Origin-Embedder-Policy = "require-corp"
+Cross-Origin-Resource-Policy = "cross-origin"
+Content-Security-Policy = "frame-ancestors __FRAME_ANCESTORS__"
+X-Content-Type-Options = "nosniff"
+Cache-Control = "no-cache"
+
+# v/<content hash>/ never changes
+[[advanced.headers]]
+source = "/v/**"
+[advanced.headers.headers]
+Cache-Control = "public, max-age=31536000, immutable"

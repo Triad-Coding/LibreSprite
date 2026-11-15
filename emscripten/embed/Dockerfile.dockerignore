@@ -1,0 +1,5 @@
+# Local build trees: the image builds its own
+build
+emscripten/build
+android
+.git
