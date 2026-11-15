@@ -57,8 +57,17 @@ include_directories(
 
 include_directories(${SDL2_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS})
 # The default pthread stack (64k) is too small for the app thread
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${USE_FLAGS} -s DEFAULT_PTHREAD_STACK_SIZE=8MB -s EXPORTED_FUNCTIONS=_main,_onPointerEvent,_onTouchPointer,_onTypedText,_onTypedKey -s EXPORTED_RUNTIME_METHODS=cwrap -s ALLOW_MEMORY_GROWTH=1 -s WASM=1 -sPTHREAD_POOL_SIZE=4 -s USE_SDL=2 -s USE_SDL_IMAGE=2 -s USE_SDL_TTF=2 -s USE_FREETYPE=1 -s USE_ZLIB=1 -s USE_GIFLIB=1 -s USE_LIBJPEG=1 -s USE_LIBPNG -s SDL2_IMAGE_FORMATS='[\"png\",\"jpg\"]' -Wl,-u,fileno -Wl,-u,_emscripten_run_callback_on_thread --preload-file ../../build/bin/data@/data")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${USE_FLAGS} -s DEFAULT_PTHREAD_STACK_SIZE=8MB -s EXPORTED_FUNCTIONS=_main,_onPointerEvent,_onTouchPointer,_onTypedText,_onTypedKey,_embedLoad -s EXPORTED_RUNTIME_METHODS=cwrap -s ALLOW_MEMORY_GROWTH=1 -s WASM=1 -sPTHREAD_POOL_SIZE=4 -s USE_SDL=2 -s USE_SDL_IMAGE=2 -s USE_SDL_TTF=2 -s USE_FREETYPE=1 -s USE_ZLIB=1 -s USE_GIFLIB=1 -s USE_LIBJPEG=1 -s USE_LIBPNG -s SDL2_IMAGE_FORMATS='[\"png\",\"jpg\"]' -Wl,-u,fileno -Wl,-u,_emscripten_run_callback_on_thread --preload-file ../../build/bin/data@/data")
 set(CMAKE_EXECUTABLE_SUFFIX .html)
+
+# The lesson embed (embed/) leaves out the CJK fonts and languages and the bundled scripts: 22 MB of the 24 MB data package
+option(SLIM_DATA "Leave the CJK fonts and languages and data/scripts out of the data package" OFF)
+if(SLIM_DATA)
+  foreach(lang zh kr jp)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --exclude-file '*/data/fonts/font-${lang}.ttf' --exclude-file '*/data/languages/${lang}.json'")
+  endforeach()
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --exclude-file '*/data/scripts'")
+endif()
 
 set_source_files_properties(${SRC}/app/file/ase_format.cpp PROPERTIES COMPILE_FLAGS "-s USE_ZLIB=1")
 set_source_files_properties(${SRC}/app/file/gif_format.cpp PROPERTIES COMPILE_FLAGS "-s USE_GIFLIB=1")
@@ -557,6 +566,7 @@ set(SRC_FILES
   ${SRC}/app/util/new_image_from_mask.cpp
   ${SRC}/app/util/pic_file.cpp
   ${SRC}/app/util/range_utils.cpp
+  ${SRC}/app/web_embed.cpp
   ${SRC}/app/widget_loader.cpp
   ${SRC}/app/xml_document.cpp
   ${SRC}/base/base64.cpp

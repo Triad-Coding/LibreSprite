@@ -53,6 +53,7 @@
 #include "app/ui/workspace.h"
 #include "app/ui_context.h"
 #include "app/util/clipboard.h"
+#include "app/web_embed.h"
 #include "base/convert_to.h"
 #include "base/exception.h"
 #include "base/fs.h"
@@ -697,6 +698,10 @@ void App::run()
     // Pump the scripting engine (timers, promises, queued events) once
     // per UI message-loop iteration.
     app::AppScripting::startTickPump();
+
+#ifdef __EMSCRIPTEN__
+    web_embed::start();
+#endif
 
     // Run the GUI main message loop
     ui::Manager::getDefault()->run();
