@@ -25,6 +25,7 @@
 #include "app/document_undo_observer.h"
 #include "app/file/file.h"
 #include "app/modules/editors.h"
+#include "app/pref/preferences.h"
 #include "app/ui/app_menuitem.h"
 #include "app/ui/editor/editor.h"
 #include "app/ui/home_view.h"
@@ -210,6 +211,12 @@ void openSprite(const Request& request)
     return;
   }
   s_doc->undoHistory()->addObserver(&s_undoObserver);
+
+  // At lesson zoom levels the default 16x16 checks fill the whole canvas.
+  // Small checks and the pixel grid show each pixel as a square.
+  DocumentPreferences& docPref = Preferences::instance().document(s_doc);
+  docPref.bg.type(gen::BgType::CHECKED_2x2);
+  docPref.show.pixelGrid(true);
   s_fit = true;
 }
 

@@ -102,7 +102,9 @@
   self.storage = {
     data: {
       [INI_PATH]: `[general]\nlanguage = ${locale}\nscreen_scale = 1\ndata_recovery = false\n` +
-                  `[experimental]\nui_scale = ${uiScale}\n`,
+                  `[experimental]\nui_scale = ${uiScale}\n` +
+                  // The floating preview covers part of the canvas; View > Preview shows it.
+                  `[MiniEditor]\nEnabled = false\n`,
     },
     dirty: false,
     commit() {},
