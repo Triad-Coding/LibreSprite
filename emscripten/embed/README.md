@@ -69,7 +69,7 @@ directly, the page only says that it runs inside a lesson.
 
 ## Deploy
 
-Build the image from the repository root, with the submodules checked out:
+Build the image from the repository root:
 
 ```sh
 docker build -f emscripten/embed/Dockerfile --build-arg SOURCE_COMMIT=$(git rev-parse HEAD) -t libresprite-embed .
@@ -77,9 +77,16 @@ docker run -p 8602:8602 -e PARENT_ORIGINS=https://triadcoding.com libresprite-em
 ```
 
 On Railway, set `RAILWAY_DOCKERFILE_PATH=emscripten/embed/Dockerfile` and
-`PARENT_ORIGINS`. Railway passes `RAILWAY_GIT_COMMIT_SHA` and `PORT`. The
-build context must contain the submodules (`third_party/simpleini`,
-`src/flic`): the Dockerfile stops with a message when they are missing.
+`PARENT_ORIGINS`, and deploy the service from its GitHub repository. Railway
+passes `RAILWAY_GIT_COMMIT_SHA` and `PORT`, and the build uses that commit
+before any `SOURCE_COMMIT`.
+
+`src/flic` and `third_party/simpleini` are copies of their upstream
+repositories, not submodules, because Railway does not check out submodules.
+Each is a byte-for-byte copy of the commit upstream LibreSprite's submodule
+pointed to (flic `876ef60`, simpleini `c94997d`). An upstream LibreSprite merge
+that moves either submodule stops with a conflict: copy in the new version
+only after you decide to take it.
 
 The build has not been timed. Expect about 20 to 40 minutes on a few cores:
 emsdk and the ports, then about 700 sources at `-O3`. Later builds reuse the

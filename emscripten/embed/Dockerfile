@@ -1,9 +1,9 @@
 # The lesson editor host: builds the web version and serves it with Static Web Server.
-# Build from the repository root with the submodules checked out:
+# Build from the repository root:
 #
 #   docker build -f emscripten/embed/Dockerfile --build-arg SOURCE_COMMIT=$(git rev-parse HEAD) .
 #
-# On Railway, RAILWAY_GIT_COMMIT_SHA takes the place of SOURCE_COMMIT.
+# On Railway, RAILWAY_GIT_COMMIT_SHA is used before SOURCE_COMMIT, so an old SOURCE_COMMIT on the service cannot name the wrong commit.
 # Run it with PARENT_ORIGINS set (see README.md).
 
 FROM ubuntu:24.04 AS build
@@ -34,12 +34,10 @@ RUN source /emsdk/emsdk_env.sh \
 
 WORKDIR /src
 COPY . .
-RUN test -f third_party/simpleini/SimpleIni.h && test -f src/flic/flic.h \
- || { echo "The submodules are missing from the build context (see README.md)" >&2; exit 1; }
 
 ARG SOURCE_COMMIT
 ARG RAILWAY_GIT_COMMIT_SHA
-RUN commit=${SOURCE_COMMIT:-$RAILWAY_GIT_COMMIT_SHA} \
+RUN commit=${RAILWAY_GIT_COMMIT_SHA:-$SOURCE_COMMIT} \
  && { [ -n "$commit" ] || { echo "Pass --build-arg SOURCE_COMMIT=<full git hash>" >&2; exit 1; }; } \
  && sed -i "s/\"local build\"/\"${commit:0:7}\"/" src/config.h \
  && cmake -S . -B build -G Ninja -DGEN_ONLY=ON \
