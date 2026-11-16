@@ -52,6 +52,11 @@ RUN commit=${SOURCE_COMMIT:-$RAILWAY_GIT_COMMIT_SHA} \
 
 FROM joseluisq/static-web-server:2-alpine
 COPY --from=build /site /public
+# The base image runs as sws, and entrypoint.sh writes config.js when the container starts.
+# Only that file is the server user's; the rest of /public stays read-only to it.
+USER root
+RUN install -o sws -g sws -m 644 /dev/null /public/config.js
+USER sws:sws
 COPY emscripten/embed/sws.toml /etc/sws/sws.toml.template
 COPY emscripten/embed/entrypoint.sh /embed-entrypoint.sh
 ENTRYPOINT ["/bin/sh", "/embed-entrypoint.sh"]
