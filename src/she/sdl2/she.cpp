@@ -43,6 +43,8 @@
 #include <map>
 #include <optional>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 
 #define SDL_HINT_WINDOWS_DPI_AWARENESS "SDL_WINDOWS_DPI_AWARENESS"
 
@@ -1102,7 +1104,7 @@ namespace she {
 
     ~SDL2System() {
       shutdown = true;
-      sleeping = false;
+      wakeMainThread();
       if (mainThread.joinable())
 	mainThread.join();
       IMG_Quit();
@@ -1116,6 +1118,8 @@ namespace she {
     std::thread::id gfxThreadId;
     std::vector<std::function<void()>> gfxQueue;
     std::atomic<bool> sleeping{false};
+    std::mutex sleepMutex;
+    std::condition_variable sleepDone;
 
     bool isGfxThread() override {
       return std::this_thread::get_id() == gfxThreadId;
@@ -1157,12 +1161,19 @@ namespace she {
 	if (elapsed < 15ms)
 	  std::this_thread::sleep_for(15ms - elapsed);
       } else if (isMainThread()) {
+	// The gfx thread wakes us when it has run the queue (refresh()).
+	std::unique_lock<std::mutex> lock(sleepMutex);
 	sleeping = true;
-	while (sleeping) {
-	  using namespace std::chrono_literals;
-	  std::this_thread::sleep_for(10ms);
-	}
+	sleepDone.wait(lock, [this]{ return !sleeping || shutdown; });
       }
+    }
+
+    void wakeMainThread() {
+      {
+	std::lock_guard<std::mutex> lock(sleepMutex);
+	sleeping = false;
+      }
+      sleepDone.notify_one();
     }
 
     std::function<int()> m_func;
@@ -1258,17 +1269,15 @@ namespace she {
 	}
       }
       #endif
-      int frames = 5;
-      do {
-	for (auto it = gfxQueue.begin(); it != gfxQueue.end(); ++it) {
-	  (*it)();
-	}
-	gfxQueue.clear();
-	sleeping = false;
-	for (auto& entry : sdl::windowIdToDisplay)
-	  entry.second->present();
-	static_cast<SDL2EventQueue*>(EventQueue::instance())->refresh();
-      } while (sleeping && --frames);
+      for (auto it = gfxQueue.begin(); it != gfxQueue.end(); ++it) {
+	(*it)();
+      }
+      gfxQueue.clear();
+      for (auto& entry : sdl::windowIdToDisplay)
+	entry.second->present();
+      // Wake the main thread last: it then has the newest events, and it cannot draw while present() reads the frame.
+      static_cast<SDL2EventQueue*>(EventQueue::instance())->refresh();
+      wakeMainThread();
     }
 
     void activateApp() override {
