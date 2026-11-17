@@ -42,6 +42,7 @@ using namespace doc;
 BrushPreview::BrushPreview(Editor* editor)
   : m_editor(editor)
   , m_type(CROSS)
+  , m_nativeCrosshair(false)
   , m_onScreen(false)
   , m_withRealPreview(false)
   , m_screenPosition(0, 0)
@@ -51,6 +52,13 @@ BrushPreview::BrushPreview(Editor* editor)
 
 BrushPreview::~BrushPreview()
 {
+}
+
+// static
+bool BrushPreview::useNativeCrosshair()
+{
+  const auto& pref = Preferences::instance();
+  return pref.experimental.nativeCrosshair() && pref.experimental.useNativeCursor();
 }
 
 BrushRef BrushPreview::getCurrentBrush()
@@ -101,6 +109,7 @@ void BrushPreview::show(const gfx::Point& screenPos)
   app::Color app_cursor_color = pref.editor.cursorColor();
   gfx::Color ui_cursor_color = color_utils::color_for_ui(app_cursor_color);
   m_blackAndWhiteNegative = (app_cursor_color.getType() == app::Color::MaskType);
+  m_nativeCrosshair = useNativeCrosshair();
 
   // Cursor in the screen (view)
   m_screenPosition = screenPos;
@@ -351,7 +360,7 @@ void BrushPreview::forEachBrushPixel(
 {
   m_savedPixelsIterator = 0;
 
-  if (m_type & CROSS)
+  if ((m_type & CROSS) && !m_nativeCrosshair)
     traceCrossPixels(g, screenPos, color, pixelDelegate);
 
   if (m_type & SELECTION_CROSS)
@@ -362,7 +371,7 @@ void BrushPreview::forEachBrushPixel(
 
   // Depending on the editor zoom, maybe we need subpixel movement (a
   // little dot inside the active pixel)
-  if (m_editor->zoom().scale() >= 4.0)
+  if (m_editor->zoom().scale() >= 4.0 && !m_nativeCrosshair)
     (this->*pixelDelegate)(g, screenPos, color);
 
   m_savedPixelsLimit = m_savedPixelsIterator;

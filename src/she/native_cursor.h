@@ -29,6 +29,7 @@ namespace she {
     kSizeSWCursor,
     kSizeWCursor,
     kSizeNWCursor,
+    kCrosshairCursor,
   };
 
 } // namespace she

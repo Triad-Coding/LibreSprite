@@ -53,6 +53,9 @@ namespace app {
 
     void invalidateRegion(const gfx::Region& region);
 
+    // The system shows a crosshair cursor, so the preview does not draw its own cross.
+    static bool useNativeCrosshair();
+
   private:
     typedef void (BrushPreview::*PixelDelegate)(ui::Graphics*, const gfx::Point&, gfx::Color);
 
@@ -81,6 +84,9 @@ namespace app {
     // The brush preview shows the cross or brush boundaries as black
     // & white negative.
     bool m_blackAndWhiteNegative;
+
+    // Set in show() and used in hide(), so both trace the same pixels.
+    bool m_nativeCrosshair;
 
     // The brush preview is on the screen.
     bool m_onScreen;

@@ -104,6 +104,7 @@ static void update_mouse_cursor()
       case ui::kSizeSWCursor: nativeCursor = she::kSizeSWCursor; break;
       case ui::kSizeWCursor: nativeCursor = she::kSizeWCursor; break;
       case ui::kSizeNWCursor: nativeCursor = she::kSizeNWCursor; break;
+      case ui::kCrosshairCursor: nativeCursor = she::kCrosshairCursor; break;
     }
   }
 

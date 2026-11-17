@@ -288,6 +288,7 @@ namespace she {
     case she::kLinkCursor: applyCursor(SDL_SYSTEM_CURSOR_POINTER); return true;
     case she::kForbiddenCursor: applyCursor(SDL_SYSTEM_CURSOR_NOT_ALLOWED); return true;
     case she::kMoveCursor: applyCursor(SDL_SYSTEM_CURSOR_MOVE); return true;
+    case she::kCrosshairCursor: applyCursor(SDL_SYSTEM_CURSOR_CROSSHAIR); return true;
     default: break;
     }
     SDL_HideCursor();

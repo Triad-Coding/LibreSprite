@@ -8,7 +8,7 @@ platform's copy (`docs/art-editor.md` in the platform repository) the same.
 | File | What it does |
 |---|---|
 | `index.html` | The page in the iframe: the canvas, a status line, `config.js` and `bridge.js`. |
-| `bridge.js` | The protocol, the session settings (language from `?locale=`, UI scale, no IndexedDB) and the engine start. |
+| `bridge.js` | The protocol, the session settings (language from `?locale=`, UI scale, the system crosshair over the canvas, no IndexedDB) and the engine start. |
 | `source.html` | The `/source/` page: the license and the fork at the exact commit (GPL-2.0). |
 | `stage.sh` | Lays out the site from a web build. |
 | `dev-server.mjs` | Serves the staged site locally with the production headers. |

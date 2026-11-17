@@ -44,7 +44,9 @@ namespace ui {
     kEyedropperCursor,
     kMagnifierCursor,
 
-    kLastCursorType = kMagnifierCursor,
+    kCrosshairCursor,
+
+    kLastCursorType = kCrosshairCursor,
     kCursorTypes,
   };
 

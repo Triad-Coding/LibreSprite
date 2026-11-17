@@ -138,7 +138,9 @@ static const char* cursor_names[kCursorTypes] = {
   "rotate_nw",                  // kRotateNWCursor
 
   "eyedropper",                 // kEyedropperCursor
-  "magnifier"                   // kMagnifierCursor
+  "magnifier",                  // kMagnifierCursor
+
+  "crosshair"                   // kCrosshairCursor
 };
 
 static css::Value value_or_none(const char* valueStr)

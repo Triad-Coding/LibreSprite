@@ -1699,7 +1699,7 @@ void Editor::showMouseCursor(CursorType cursorType)
 
 void Editor::showBrushPreview(const gfx::Point& screenPos)
 {
-  ui::set_mouse_cursor(kNoCursor);
+  ui::set_mouse_cursor(BrushPreview::useNativeCrosshair() ? kCrosshairCursor : kNoCursor);
   m_brushPreview.show(screenPos);
 }
 

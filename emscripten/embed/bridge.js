@@ -102,7 +102,8 @@
   self.storage = {
     data: {
       [INI_PATH]: `[general]\nlanguage = ${locale}\nscreen_scale = 1\ndata_recovery = false\n` +
-                  `[experimental]\nui_scale = ${uiScale}\n` +
+                  // The browser draws a system crosshair at once; a drawn one waits for the next frame.
+                  `[experimental]\nui_scale = ${uiScale}\nnative_crosshair = true\n` +
                   // The floating preview covers part of the canvas; View > Preview shows it.
                   `[MiniEditor]\nEnabled = false\n`,
     },
