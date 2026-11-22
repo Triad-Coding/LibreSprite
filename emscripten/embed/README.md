@@ -78,11 +78,20 @@ ports) as the image `libresprite-toolchain`, then runs the same commands in it
 with the checkout mounted, and stages the site in `emscripten/build/site`. The
 build directories stay in the checkout, so after a change only the changed
 sources compile. Unlike `docker build` of the whole Dockerfile, whose
-`COPY . .` makes every build compile everything again. Do not mix it with a
-build made outside Docker in the same checkout: delete `build/` and
-`emscripten/build/` when you switch. The build runs as root and gives the files
-back to you when it ends; if it is stopped part-way, they stay root's, so
-delete them through the image:
+`COPY . .` makes every build compile everything again.
+
+The container runs as your user, so the files in the checkout are yours also
+when a build stops part-way. The Emscripten cache in the image (with the
+ports) belongs to root, so the first run copies it to
+`emscripten/build/emcache` (about 600 MB), and copies it again only when the
+image changes. Ctrl+C stops the build and the container, with or without a
+terminal.
+
+Do not mix it with a build made outside Docker in the same checkout: delete
+`build/` and `emscripten/build/` when you switch. The script stops with a
+message when a CMake cache names a tool that is not in the image, or when the
+build directories have files that are not yours (an older version of the
+script built as root). Delete those through the image:
 `docker run --rm -v "$PWD:$PWD" -w "$PWD" libresprite-toolchain rm -rf build emscripten/build`.
 
 ## Deploy
