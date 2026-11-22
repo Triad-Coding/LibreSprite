@@ -118,7 +118,13 @@ bool IntEntry::onProcessMessage(Message* msg)
       if (hasFocus() && !isReadOnly()) {
         KeyMessage* keymsg = static_cast<KeyMessage*>(msg);
         int chr = keymsg->unicodeChar();
-        if (chr < '0' || chr > '9') {
+        // A character other than a digit skips the Entry, so it still
+        // runs its shortcut. Every other key goes to the Entry: the
+        // digits, and the editing keys (Backspace, Del, the arrows,
+        // Home, End, Ctrl+A/C/X/V), which must not reach the shortcuts
+        // (Backspace and Del are Edit > Clear). The Entry passes on any
+        // key it does not use (Enter, Esc, Tab, Ctrl+Z).
+        if (chr >= ' ' && (chr < '0' || chr > '9')) {
           // By-pass Entry::onProcessMessage()
           return Widget::onProcessMessage(msg);
         }
