@@ -397,6 +397,9 @@ static void patchEventListeners() {
 
 static std::deque<she::Event> keybuffer;
 static bool display_has_mouse = false;
+#ifdef __EMSCRIPTEN__
+static bool waitingForText = false;  // keybuffer has a printable key that waits for its text
+#endif
 
 #ifdef __EMSCRIPTEN__
 // Touch, stylus and on-screen keyboards on the web.
@@ -1016,12 +1019,22 @@ namespace she {
             event.setRepeat(sdlEvent.key.repeat);
           }
           keybuffer.push_back(event);
+#ifdef __EMSCRIPTEN__
+          waitingForText = false;
+#endif
           if (modifiers & (she::kKeyCtrlModifier | she::kKeyCmdModifier)) {
+#ifndef __EMSCRIPTEN__
+            // On the web text input stays on (see set_input_rect()).
             SDL_StopTextInput();
+#endif
             break;
           } else if (!SDL_IsTextInputActive()) {
             SDL_StartTextInput();
           }
+#ifdef __EMSCRIPTEN__
+          // The text of a key can come in a later poll. Keep a printable key until its text or its release, so it does not run its shortcut (Zoom for a digit).
+          waitingForText = isPressed && sdlEvent.key.keysym.sym >= ' ' && sdlEvent.key.keysym.sym <= '~';
+#endif
           continue;
         }
 
@@ -1046,6 +1059,9 @@ namespace she {
           continue;
 
         case SDL_TEXTINPUT: {
+#ifdef __EMSCRIPTEN__
+          waitingForText = false;
+#endif
           keybuffer.clear();
           std::string textString = sdlEvent.text.text;
           base::utf8_const_iterator begin{textString.begin()};
@@ -1076,6 +1092,10 @@ namespace she {
         }
       }
 
+#ifdef __EMSCRIPTEN__
+      if (waitingForText)
+        return;
+#endif
       if (!keybuffer.empty()) {
         event = keybuffer.front();
         keybuffer.pop_front();
@@ -1414,6 +1434,9 @@ namespace she {
     // Where the focused text box is, so a tap in it brings up a tablet's keyboard.
     MAIN_THREAD_ASYNC_EM_ASM({ if (Module.setTextRect) Module.setTextRect($0, $1, $2, $3); },
                              rect.x, rect.y, rect.w, rect.h);
+    // Keep text input on: the browser gives the text of a key only if it was on when the key went down.
+    // Without the text, a digit typed in a number field runs its shortcut (Zoom).
+    return;
 #endif
     if (rect.isEmpty()) {
       SDL_StopTextInput();
@@ -1431,6 +1454,9 @@ namespace she {
 
   void clear_keyboard_buffer() {
     keybuffer.clear();
+#ifdef __EMSCRIPTEN__
+    waitingForText = false;
+#endif
   }
 
 } // namespace she
