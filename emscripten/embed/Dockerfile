@@ -26,11 +26,13 @@ RUN git clone --depth 1 https://github.com/emscripten-core/emsdk.git /emsdk \
  && /emsdk/emsdk activate ${EMSDK_VERSION}
 
 # Builds the Emscripten ports in their own layer.
-# Freetype goes first: a fresh port cache asserts on the first link (emscripten-core/emscripten#20204).
+# The exception flags are those of emscripten/CMakeLists.txt: without them emcc builds other variants of the ports, and the web build makes its own.
+# Freetype goes first, in both variants: a fresh port cache asserts on the first link (emscripten-core/emscripten#20204), and the SDL2_ttf port builds with the plain one.
 RUN source /emsdk/emsdk_env.sh \
  && echo 'int main(){}' > /tmp/dummy.c \
  && emcc -O2 -pthread -sUSE_FREETYPE /tmp/dummy.c -o /tmp/dummy.js \
- && emcc -O2 -pthread -sUSE_SDL=2 -sUSE_SDL_IMAGE=2 -sUSE_SDL_TTF=2 -sUSE_ZLIB=1 -sUSE_GIFLIB=1 \
+ && emcc -O2 -pthread -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sUSE_FREETYPE /tmp/dummy.c -o /tmp/dummy.js \
+ && emcc -O2 -pthread -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sUSE_SDL=2 -sUSE_SDL_IMAGE=2 -sUSE_SDL_TTF=2 -sUSE_ZLIB=1 -sUSE_GIFLIB=1 \
       -sUSE_LIBJPEG=1 -sUSE_LIBPNG -sSDL2_IMAGE_FORMATS='["png","jpg"]' /tmp/dummy.c -o /tmp/dummy.js
 
 FROM toolchain AS build

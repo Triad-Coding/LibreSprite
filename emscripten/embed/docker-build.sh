@@ -24,10 +24,11 @@ fi
 # The build runs as you, so the files in the checkout are always yours, also when the build stops part-way.
 # The checkout is mounted at its own path, so the paths in the CMake caches stay the same between runs.
 # --init with TINI_KILL_PROCESS_GROUP sends a signal (Ctrl+C without a terminal, docker stop) to all the build processes.
+# IMAGE_ID is the list of layers: the image ID can change at each docker build (the containerd image store), also when all layers come from the cache.
 docker run --rm $tty --init -e TINI_KILL_PROCESS_GROUP=1 \
   -u "$(id -u):$(id -g)" -e HOME=/tmp \
   -v "$root:$root" -w "$root" \
-  -e COMMIT="$commit" -e OUT="$out" -e IMAGE_ID="$(docker image inspect -f '{{.Id}}' "$image")" \
+  -e COMMIT="$commit" -e OUT="$out" -e IMAGE_ID="$(docker image inspect -f '{{range .RootFS.Layers}}{{.}} {{end}}' "$image")" \
   "$image" bash -c '
     set -e
 
@@ -51,7 +52,7 @@ docker run --rm $tty --init -e TINI_KILL_PROCESS_GROUP=1 \
     done
 
     # emcc writes to its cache. The cache in the image (with the ports) belongs to root, so the build uses a copy in emscripten/build.
-    # The image ID shows when the image changed and the copy is old.
+    # IMAGE_ID (the layers of the image) shows when the image changed and the copy is old.
     em_cache=$PWD/emscripten/build/emcache
     if [ "$(cat "$em_cache/image-id" 2> /dev/null)" != "$IMAGE_ID" ]; then
       echo "Copying the Emscripten cache from the image to $em_cache"
