@@ -78,14 +78,17 @@ ports) as the image `libresprite-toolchain`, then runs the same commands in it
 with the checkout mounted, and stages the site in `emscripten/build/site`. The
 build directories stay in the checkout, so after a change only the changed
 sources compile. Unlike `docker build` of the whole Dockerfile, whose
-`COPY . .` makes every build compile everything again.
+`COPY . .` makes every build compile everything again. On 8 cores, with the
+image already built: about 5 minutes the first time, about 25 seconds with no
+change (mostly compressing the staged files), about 40 seconds after a change
+to one source.
 
 The container runs as your user, so the files in the checkout are yours also
 when a build stops part-way. The Emscripten cache in the image (with the
 ports) belongs to root, so the first run copies it to
-`emscripten/build/emcache` (about 600 MB), and copies it again only when the
-image changes. Ctrl+C stops the build and the container, with or without a
-terminal.
+`emscripten/build/emcache` (about 1 GB), and copies it again only when the
+image's layers change. Ctrl+C stops the build and the container, with or
+without a terminal.
 
 Do not mix it with a build made outside Docker in the same checkout: delete
 `build/` and `emscripten/build/` when you switch. The script stops with a
