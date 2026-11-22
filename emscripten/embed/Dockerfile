@@ -6,7 +6,8 @@
 # On Railway, RAILWAY_GIT_COMMIT_SHA is used before SOURCE_COMMIT, so an old SOURCE_COMMIT on the service cannot name the wrong commit.
 # Run it with PARENT_ORIGINS set (see README.md).
 
-FROM ubuntu:24.04 AS build
+# The toolchain stage is also what docker-build.sh builds for local development.
+FROM ubuntu:24.04 AS toolchain
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG EMSDK_VERSION=6.0.10
 ARG CMAKE_VERSION=4.4.3
@@ -32,6 +33,7 @@ RUN source /emsdk/emsdk_env.sh \
  && emcc -O2 -pthread -sUSE_SDL=2 -sUSE_SDL_IMAGE=2 -sUSE_SDL_TTF=2 -sUSE_ZLIB=1 -sUSE_GIFLIB=1 \
       -sUSE_LIBJPEG=1 -sUSE_LIBPNG -sSDL2_IMAGE_FORMATS='["png","jpg"]' /tmp/dummy.c -o /tmp/dummy.js
 
+FROM toolchain AS build
 WORKDIR /src
 COPY . .
 

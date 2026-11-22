@@ -67,6 +67,24 @@ PARENT_ORIGINS=http://localhost:5173 node emscripten/embed/dev-server.mjs
 `PARENT_ORIGINS` defaults to `http://localhost:5173` in the dev server. Opened
 directly, the page only says that it runs inside a lesson.
 
+Without emsdk and CMake, Docker can do the three build steps:
+
+```sh
+sh emscripten/embed/docker-build.sh
+```
+
+It builds the Dockerfile's `toolchain` stage (Ubuntu, CMake, emsdk and the
+ports) as the image `libresprite-toolchain`, then runs the same commands in it
+with the checkout mounted, and stages the site in `emscripten/build/site`. The
+build directories stay in the checkout, so after a change only the changed
+sources compile. Unlike `docker build` of the whole Dockerfile, whose
+`COPY . .` makes every build compile everything again. Do not mix it with a
+build made outside Docker in the same checkout: delete `build/` and
+`emscripten/build/` when you switch. The build runs as root and gives the files
+back to you when it ends; if it is stopped part-way, they stay root's, so
+delete them through the image:
+`docker run --rm -v "$PWD:$PWD" -w "$PWD" libresprite-toolchain rm -rf build emscripten/build`.
+
 ## Deploy
 
 Build the image from the repository root:
