@@ -46,6 +46,13 @@ namespace app {
     void openTipWindow(tools::ToolGroup* tool_group, tools::Tool* tool);
     void closeTipWindow();
 
+    // Points at a tool's button for a lesson (app/web_embed.cpp): the button shows that tool
+    // and gets an outline, which blinks first unless blink is false. The outline stays until
+    // the tool is selected or clearHighlight(). For the tool already selected it goes after
+    // the blinks, since there is nothing left to pick.
+    void highlightTool(tools::Tool* tool, bool blink);
+    void clearHighlight();
+
   protected:
     bool onProcessMessage(ui::Message* msg) override;
     void onSizeHint(ui::SizeHintEvent& ev) override;
@@ -58,6 +65,8 @@ namespace app {
     gfx::Point getToolPositionInGroup(int group_index, tools::Tool* tool);
     void openTipWindow(int group_index, tools::Tool* tool);
     void onClosePopup();
+    void onHighlightStep();
+    void drawHighlight(ui::Graphics* g, const gfx::Rect& toolrc);
 
     // ActiveToolObserver impl
     void onSelectedToolChange(tools::Tool* tool) override;
@@ -88,6 +97,13 @@ namespace app {
 
     ui::Timer m_tipTimer;
     bool m_tipOpened;
+
+    // highlightTool(): the tool, whether its outline shows now, and the timer steps left.
+    tools::Tool* m_highlightTool;
+    bool m_highlightOn;
+    bool m_highlightBlink;
+    int m_highlightSteps;
+    ui::Timer m_highlightTimer;
 
     base::Connection m_closeConn;
   };

@@ -13,6 +13,8 @@
 //   art:load-error {reason}                           the art:load bytes did not open; never armed
 //   art:dirty                                         first change after the last autosave was sent
 //   art:autosave {seq, aseprite, png, width, height}  2 s after a change, 20 s at most
+//   art:tool-icons {icons: {<tool id>: PNG}}         once per boot, when the engine has started and the page has
+//                                                     sent something; PNG ArrayBuffers at the UI scale (16 px at 1x)
 //   art:error {reason}                                fatal
 // An autosave goes at once on Ctrl+S, tab hide, pagehide and art:flush-request, if there is a change or the last one has no ack.
 //
@@ -20,9 +22,14 @@
 //   art:new {width, height} or art:load {aseprite}    once, after art:ready
 //   art:save-ack {seq}
 //   art:flush-request
+//   art:highlight-tool {tool}                         outline a tool's button (a data/gui.xml tool id) after art:loaded.
+//                                                     It blinks first unless the student prefers reduced motion, and
+//                                                     stays until that tool is picked or art:clear-highlight.
+//   art:clear-highlight
 //
 // The C++ side is src/app/web_embed.cpp.
-// It calls the Module.embed functions below and takes requests through Module._embedLoad.
+// It calls the Module.embed functions below and takes requests through Module._embedLoad,
+// Module._embedHighlightTool and Module._embedClearHighlight.
 
 (() => {
   'use strict';
@@ -156,6 +163,24 @@
     }
   };
 
+  // The tool icons. The app hands them over one by one (collecting), and a page message can come
+  // between two of them, so they go out only when the set is whole (icons) and the page listens.
+  const collecting = {};
+  let icons = null;
+  let iconsSent = false;
+  const sendIcons = () => {
+    if (!icons || !heard || iconsSent || failed)
+      return;
+    iconsSent = true;
+    const buffers = {};
+    for (const [id, png] of Object.entries(icons))
+      buffers[id] = png.slice().buffer;
+    post({ type: 'art:tool-icons', icons: buffers }, Object.values(buffers));
+  };
+
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const isToolId = (value) => typeof value === 'string' && /^[a-z_]{1,40}$/.test(value);
+
   const isSize = (value) => Number.isInteger(value) && value >= 1 && value <= 4096;
   const isBytes = (value) => value instanceof ArrayBuffer || ArrayBuffer.isView(value);
 
@@ -166,6 +191,7 @@
     if (!message || typeof message.type !== 'string')
       return;
     heard = true;
+    sendIcons();
     switch (message.type) {
       case 'art:new':
       case 'art:load':
@@ -184,6 +210,15 @@
         break;
       case 'art:flush-request':
         flush();
+        break;
+      case 'art:highlight-tool':
+        if (armed && isToolId(message.tool))
+          Module.cwrap('embedHighlightTool', null, ['string', 'number'])(
+            message.tool, reducedMotion.matches ? 0 : 1);
+        break;
+      case 'art:clear-highlight':
+        if (armed)
+          Module._embedClearHighlight();
         break;
     }
   });
@@ -249,6 +284,14 @@
         debounce = setTimeout(send, DEBOUNCE_MS);
       },
       onFlush: flush,
+      // Before onAppReady: one call per tool, then onToolIcons.
+      onToolIcon(id, png) {
+        collecting[id] = png;
+      },
+      onToolIcons() {
+        icons = collecting;
+        sendIcons();
+      },
     },
   };
 

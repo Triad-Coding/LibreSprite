@@ -26,10 +26,14 @@
 #include "app/file/file.h"
 #include "app/modules/editors.h"
 #include "app/pref/preferences.h"
+#include "app/tools/tool.h"
+#include "app/tools/tool_box.h"
 #include "app/ui/app_menuitem.h"
 #include "app/ui/editor/editor.h"
 #include "app/ui/home_view.h"
 #include "app/ui/main_window.h"
+#include "app/ui/skin/skin_theme.h"
+#include "app/ui/toolbar.h"
 #include "app/ui/workspace.h"
 #include "app/ui_context.h"
 #include "base/time.h"
@@ -61,6 +65,7 @@ using namespace ui;
 const char* kLoadPath = "/tmp/embed-load.aseprite";
 const char* kSavePath = "/tmp/embed-save.aseprite";
 const char* kPngPath = "/tmp/embed-save.png";
+const char* kIconPath = "/tmp/embed-icon.png";
 
 // Commands that leave the one sprite, open a file dialog or a URL, or change the canvas size that the lesson sets.
 // Rotate is denied only for the sprite (see isDenied()).
@@ -81,9 +86,16 @@ struct Request {
   int width, height;
 };
 
-// Set on the browser thread by embedLoad(), taken on the UI thread.
+// A lesson pointing at a tool's button, or clearing that (an empty tool).
+struct Highlight {
+  std::string tool;
+  bool blink;
+};
+
+// Set on the browser thread by embedLoad() and embedHighlightTool(), taken on the UI thread.
 std::mutex s_mutex;
 std::unique_ptr<Request> s_request;
+std::unique_ptr<Highlight> s_highlight;  // only the newest counts
 
 // UI thread only.
 Document* s_doc = nullptr;
@@ -306,13 +318,57 @@ bool snapshot()
   return true;
 }
 
+// An unknown tool id is ignored: the page checks ids against data/gui.xml when it builds.
+void applyHighlight(const Highlight& highlight)
+{
+  ToolBar* toolbar = ToolBar::instance();
+  if (!toolbar)
+    return;
+  if (highlight.tool.empty()) {
+    toolbar->clearHighlight();
+    return;
+  }
+  if (tools::Tool* tool = App::instance()->toolBox()->getToolById(highlight.tool))
+    toolbar->highlightTool(tool, highlight.blink);
+}
+
+// Gives the page each tool's icon as a PNG, so its lesson text can show the buttons it names.
+// The icons are at the UI scale (16 px at 1x).
+void sendToolIcons()
+{
+  auto theme = skin::SkinTheme::instance();
+  tools::ToolBox* toolbox = App::instance()->toolBox();
+  for (auto it = toolbox->begin(); it != toolbox->end(); ++it) {
+    const std::string& id = (*it)->getId();
+    she::Surface* icon = theme->getToolIcon(id.c_str());
+    if (!icon)
+      continue;
+    std::vector<uint8_t> png = she::instance()->encodeSurfaceAsPNG(icon);
+    if (png.empty())
+      continue;
+    std::ofstream file(kIconPath, std::ios::binary | std::ios::trunc);
+    file.write(reinterpret_cast<const char*>(png.data()), png.size());
+    file.close();
+    if (!file.good())
+      continue;
+    MAIN_THREAD_EM_ASM({
+      Module.embed.onToolIcon(UTF8ToString($0), FS.readFile(UTF8ToString($1)));
+    }, id.c_str(), kIconPath);
+  }
+  MAIN_THREAD_EM_ASM({ Module.embed.onToolIcons(); });
+}
+
 void onTick()
 {
   std::unique_ptr<Request> request;
+  std::unique_ptr<Highlight> highlight;
   {
     std::lock_guard<std::mutex> lock(s_mutex);
     request = std::move(s_request);
+    highlight = std::move(s_highlight);
   }
+  if (highlight)
+    applyHighlight(*highlight);
   if (request && !s_doc) {
     openSprite(*request);
     return;
@@ -367,6 +423,7 @@ void start()
   timer->Tick.connect(&onTick);
   timer->start();
 
+  sendToolIcons();
   MAIN_THREAD_EM_ASM({ Module.embed.onAppReady(); });
 }
 
@@ -389,4 +446,21 @@ extern "C" void embedLoad(int width, int height)
 
   std::lock_guard<std::mutex> lock(s_mutex);
   s_request.reset(new Request{fromBytes, width, height});
+}
+
+// Browser thread. Points at a tool's button (a data/gui.xml tool id), with blinks unless
+// blink is 0 (the student prefers reduced motion).
+extern "C" void embedHighlightTool(const char* toolId, int blink)
+{
+  using namespace app::web_embed;
+  std::lock_guard<std::mutex> lock(s_mutex);
+  s_highlight.reset(new Highlight{toolId ? toolId : "", blink != 0});
+}
+
+// Browser thread. Takes the outline off, e.g. when the lesson turns to another page.
+extern "C" void embedClearHighlight()
+{
+  using namespace app::web_embed;
+  std::lock_guard<std::mutex> lock(s_mutex);
+  s_highlight.reset(new Highlight{"", false});
 }

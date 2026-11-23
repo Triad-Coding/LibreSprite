@@ -64,6 +64,10 @@ private:
   ToolBar* m_toolbar;
 };
 
+// highlightTool(): three blinks, 250 ms off and 250 ms on, ending on.
+static const int kHighlightStepMs = 250;
+static const int kHighlightSteps = 6;
+
 static Size getToolIconSize(Widget* widget)
 {
   SkinTheme* theme = static_cast<SkinTheme*>(widget->theme());
@@ -83,6 +87,11 @@ ToolBar::ToolBar()
   : Widget(kGenericWidget)
   , m_openedRecently(false)
   , m_tipTimer(300, this)
+  , m_highlightTool(nullptr)
+  , m_highlightOn(false)
+  , m_highlightBlink(false)
+  , m_highlightSteps(0)
+  , m_highlightTimer(kHighlightStepMs, this)
 {
   m_instance = this;
 
@@ -275,6 +284,9 @@ bool ToolBar::onProcessMessage(Message* msg)
         m_tipTimer.stop();
         m_tipOpened = true;
       }
+      else if (static_cast<TimerMessage*>(msg)->timer() == &m_highlightTimer) {
+        onHighlightStep();
+      }
       break;
 
   }
@@ -332,6 +344,9 @@ void ToolBar::onPaint(ui::PaintEvent& ev)
         toolrc.x+toolrc.w/2-icon->width()/2,
         toolrc.y+toolrc.h/2-icon->height()/2);
     }
+
+    if (m_highlightOn && m_highlightTool && m_highlightTool->getGroup() == tool_group)
+      drawHighlight(g, toolrc);
   }
 
   // Draw button to show/hide preview
@@ -556,6 +571,64 @@ void ToolBar::selectTool(Tool* tool)
   invalidate();
 }
 
+void ToolBar::highlightTool(Tool* tool, bool blink)
+{
+  ASSERT(tool);
+
+  // The button shows the tool it points at, so clicking it picks that tool.
+  m_selectedInGroup[tool->getGroup()] = tool;
+  m_highlightTool = tool;
+  m_highlightOn = true;
+  m_highlightBlink = blink;
+  m_highlightSteps = kHighlightSteps;
+  m_highlightTimer.start();
+  invalidate();
+}
+
+void ToolBar::clearHighlight()
+{
+  m_highlightTimer.stop();
+  if (!m_highlightTool)
+    return;
+  m_highlightTool = nullptr;
+  m_highlightOn = false;
+  invalidate();
+}
+
+void ToolBar::onHighlightStep()
+{
+  if (!m_highlightTool) {
+    m_highlightTimer.stop();
+    return;
+  }
+  if (--m_highlightSteps > 0) {
+    if (m_highlightBlink) {
+      m_highlightOn = !m_highlightOn;
+      invalidate();
+    }
+    return;
+  }
+
+  // The blinks are over and the outline is on.
+  m_highlightTimer.stop();
+  m_highlightOn = true;
+  if (App::instance()->activeTool() == m_highlightTool)
+    clearHighlight();
+  else
+    invalidate();
+}
+
+// A ring inside the button, light and dark, so it shows on any skin.
+void ToolBar::drawHighlight(Graphics* g, const Rect& toolrc)
+{
+  const int scale = guiscale();
+  Rect rc = toolrc;
+  for (int i = 0; i < 2*scale; ++i, rc.shrink(1))
+    g->drawRect(gfx::rgba(255, 196, 0), rc);
+  for (int i = 0; i < scale; ++i, rc.shrink(1))
+    g->drawRect(gfx::rgba(0, 0, 0), rc);
+}
+
 void ToolBar::onClosePopup()
 {
   closeTipWindow();
@@ -733,6 +806,11 @@ void ToolBar::onSelectedToolChange(tools::Tool* tool)
 {
   if (tool && m_selectedInGroup[tool->getGroup()] != tool)
     m_selectedInGroup[tool->getGroup()] = tool;
+
+  // The student picked the tool a lesson pointed at. While it still blinks, onHighlightStep()
+  // clears it after the last blink instead, so a pick during the blinks doesn't cut them short.
+  if (tool && tool == m_highlightTool && !m_highlightTimer.isRunning())
+    clearHighlight();
 
   invalidate();
 }
